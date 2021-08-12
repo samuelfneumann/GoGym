@@ -45,7 +45,6 @@ To install `Python 3.7` (along with the `Python3.7-dev` package) from source:
 * If using many environments concurrently in the same process, the dreaded `Python` GIL will ensure that performance decreases. Try to limit the number of environments per-process to 1 to ensure the best performance (in fact, this limitation exists when running OpenAI Gym in `Python` too).
 * Since `Go-Python` provides bindings only for the `Python C API` and not the `NumPy C API`, `Python` `List`s are passed as actions to the `gym` environments instead of `NumPy` `ndarray`s. Casting the `Python` `List`s to `NumPy` `ndarray`s would just be an extra unneeded step.
 * So far, only Gym environments which satisfy the *regular* Gym interface (having `Step()`, `Reset()`, and `Seed()` methods) can be constructed. Any others (e.g. the *Algorithmic Environments*) will result in a panic. This means that MuJoCo, classic control, and Atari should work.
-* There is an issue with the reference counts (they're off), so that at one time only 3 environments can be constructed.
 
 # Future plans
 - [ ] Make all environments work, even those that do not implement the *regular* environment API

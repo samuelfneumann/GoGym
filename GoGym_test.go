@@ -10,12 +10,12 @@ import (
 func TestMake(t *testing.T) {
 
 	tests := []string{
-		// "MountainCar-v0",
+		"MountainCar-v0",
 		"MountainCarContinuous-v0",
-		// "Pendulum-v0",
-		// "Acrobot-v1",
+		"Pendulum-v0",
+		"Acrobot-v1",
 		"CartPole-v1",
-		// "HalfCheetah-v2",
+		"HalfCheetah-v2",
 		"Ant-v2",
 	}
 

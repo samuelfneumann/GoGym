@@ -110,10 +110,10 @@ func New(env *python.PyObject, envName string, continuousAction bool,
 func Make(envName string) (Environment, error) {
 	// Get the gym.make function
 	dict := python.PyModule_GetDict(gym)
-	gym.IncRef()
+	dict.IncRef()
 	defer dict.DecRef()
 	makeEnv := python.PyDict_GetItemString(dict, "make")
-	dict.IncRef()
+	makeEnv.IncRef()
 	defer makeEnv.DecRef()
 	if !(makeEnv != nil && python.PyCallable_Check(makeEnv)) {
 		if python.PyErr_Occurred() != nil {
