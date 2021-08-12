@@ -12,7 +12,7 @@ This package has the following dependencies:
     * Along with all its dependencies
     * A MuJoCo license if you intend to use MuJoCo environments
     * [Atari-Py](https://pypi.org/project/atari-py/) and Atari ROMs if you intend to use Atari environments
-    * [Box2D](https://pypi.org/project/Box2D/)
+    * [PyBox2D](https://pypi.org/project/Box2D/)
 * `Python 3.7` (currently tested with [Python 3.7.9](https://www.python.org/downloads/release/python-379/))
 * `Python 3.7-dev` (automatically installed when installing `Python3.7` from source)
 * [Go-Python](https://github.com/DataDog/go-python3): Go bindings for the C-API of CPython3
