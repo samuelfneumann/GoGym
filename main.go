@@ -44,9 +44,13 @@ func New(envName string) (*GymEnv, error) {
 
 	// Create the gym environment
 	env := makeEnv.CallObject(args)
+
 	fmt.Println("Env:", python.PyUnicode_AsUTF8(env.Str()))
 	if env == nil {
-		return nil, fmt.Errorf("make: could not create call gym.make")
+		if python.PyErr_Occurred() != nil {
+			python.PyErr_Print()
+		}
+		return nil, fmt.Errorf("make: could not call gym.make")
 	}
 
 	// Figure out if the environment has continuous actions or not
@@ -191,6 +195,22 @@ func (g *GymEnv) Close() {
 	g.env.DecRef()
 }
 
+func (g *GymEnv) Render() {
+	// This function does not work. The issue is trying to import
+	// gym.error in the classic_control/rendering file. This should
+	// be a fairly easy fix.
+	renderFunc := g.env.GetAttrString("render")
+	defer renderFunc.DecRef()
+
+	render := renderFunc.CallObject(nil)
+	if python.PyErr_Occurred() != nil {
+		python.PyErr_Print()
+	}
+	if render == nil {
+		panic("render: could not render")
+	}
+}
+
 func main() {
 	python.Py_Initialize()
 	defer python.Py_Finalize()
@@ -211,7 +231,7 @@ func main() {
 	defer o2.DecRef()
 	numpy = python.PyImport_AddModule("numpy")
 
-	env, err := New("MountainCarContinuous-v0")
+	env, err := New("Ant-v2")
 	if err != nil {
 		panic(err)
 	}
@@ -223,11 +243,11 @@ func main() {
 	}
 	fmt.Println("Reset:", data)
 
-	// seed, err := env.Seed(10)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// fmt.Println("Seed:", seed)
+	seed, err := env.Seed(10)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Seed:", seed)
 
 	obs, reward, done, err := env.Step(mat.NewVecDense(1, []float64{0.0}))
 	if err != nil {
