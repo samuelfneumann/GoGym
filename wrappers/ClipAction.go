@@ -60,6 +60,8 @@ func NewClipAction(env gogym.Environment) (gogym.Environment, error) {
 		newEnv,
 		fmt.Sprintf("ClipAction(%v)", env.Name()),
 		env.ContinuousAction(),
+		env.ActionSpace(),
+		env.ObservationSpace(),
 	)
 
 	return &ClipAction{

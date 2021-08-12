@@ -1,6 +1,6 @@
 # GoGym: Go Bindings for OpenAI Gym
 
-This Go module provides functionality to access OpenAI Gym in Go using `cgo` and the C `Python` API. The API has been kept very similar to the API of OpenAI Gym, except that certain aspects have been made more "Go-like". For example, the `make` factory has been changed to be called 	`New`, to keep consistent with the Go convention of constructor names. Additionally, many functions return Go `error`s, when the OpenAI Gym API does not.
+This Go module provides functionality to access [OpenAI Gym](https://github.com/openai/gym) in Go using `cgo` and the C `Python` API. The API has been kept very similar to the API of OpenAI Gym, except that certain aspects have been made more "Go-like". For example, the `make` factory has been changed to be called 	`New`, to keep consistent with the Go convention of constructor names. Another example is that action and observation spaces are unexported, and they must be accessed through their respective getter methods. Additionally, many functions return Go `error`s, when the OpenAI Gym API does not.
 
 This module simply provides `Go` bindings for OpenAI Gym. The module uses an embedded `Python` interpreter in `Go` code, so the actual gym code running under-the-hood is still `Python`. So don't expect `Go`-level performance. If you wanted reinforcement learning environments implemented completely in `Go`, see my [GoLearn: Reinforcement Learning in Go](https://github.com/samuelfneumann/GoLearn) module.
 
@@ -44,3 +44,10 @@ To install `Python 3.7` (along with the `Python3.7-dev` package) from source:
 * You may need to link the `Python 3.7` library for `cgo`: `#cgo LDFLAGS: -lpython3` or `#cgo LDFLAGS: -lpython3.7`
 * If using many environments concurrently in the same process, the dreaded `Python` GIL will ensure that performance decreases. Try to limit the number of environments per-process to 1 to ensure the best performance (in fact, this limitation exists when running OpenAI Gym in `Python` too).
 * Since `Go-Python` provides bindings only for the `Python C API` and not the `NumPy C API`, `Python` `List`s are passed as actions to the `gym` environments instead of `NumPy` `ndarray`s. Casting the `Python` `List`s to `NumPy` `ndarray`s would just be an extra unneeded step.
+* So far, only Gym environments which satisfy the *regular* Gym interface (having `Step()`, `Reset()`, and `Seed()` methods) can be constructed. Any others (e.g. the *Algorithmic Environments*) will result in a panic. This means that MuJoCo, classic control, and Atari should work.
+* There is an issue with the reference counts (they're off), so that at one time only 3 environments can be constructed.
+
+# Future plans
+- [ ] Make all environments work, even those that do not implement the *regular* environment API
+- [ ] Add all wrappers
+- [ ] Add all spaces

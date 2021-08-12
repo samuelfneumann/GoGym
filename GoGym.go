@@ -10,6 +10,7 @@ package gogym
 import "C"
 import (
 	"fmt"
+	"os"
 
 	python "github.com/DataDog/go-python3"
 	"gonum.org/v1/gonum/mat"
@@ -59,6 +60,12 @@ type Environment interface {
 	// to calling env.seed(seed) in Python's OpenAI Gym.
 	Seed(seed int) ([]int, error)
 
+	// ActionSpace returns the action space as a Go data structure
+	ActionSpace() Space
+
+	// ObservationSpace returns the observation space as a Go data structure
+	ObservationSpace() Space
+
 	// Step takes one environmental step given some action a and returns
 	// the next observation, reward, and a flag indicating if the
 	// episode has completed. It is equivalent to calling env.step(a) in
@@ -81,11 +88,21 @@ type GymEnv struct {
 	env              *python.PyObject
 	envName          string
 	continuousAction bool
+
+	actionSpace      Space
+	observationSpace Space
 }
 
 // New creates and returns a new *GymEnv
-func New(env *python.PyObject, envName string, continuousAction bool) Environment {
-	return &GymEnv{env, envName, continuousAction}
+func New(env *python.PyObject, envName string, continuousAction bool,
+	actionSpace, observationSpace Space) Environment {
+	return &GymEnv{
+		env:              env,
+		envName:          envName,
+		continuousAction: continuousAction,
+		actionSpace:      actionSpace,
+		observationSpace: observationSpace,
+	}
 }
 
 // Make returns a new environment with the given name. It is equivalent
@@ -93,15 +110,25 @@ func New(env *python.PyObject, envName string, continuousAction bool) Environmen
 func Make(envName string) (Environment, error) {
 	// Get the gym.make function
 	dict := python.PyModule_GetDict(gym)
+	gym.IncRef()
 	defer dict.DecRef()
 	makeEnv := python.PyDict_GetItemString(dict, "make")
+	dict.IncRef()
 	defer makeEnv.DecRef()
 	if !(makeEnv != nil && python.PyCallable_Check(makeEnv)) {
+		if python.PyErr_Occurred() != nil {
+			fmt.Println()
+			fmt.Println("========== Python Error ==========")
+			python.PyErr_Print()
+			fmt.Println("==================================")
+			fmt.Println()
+		}
 		return nil, fmt.Errorf("make: error creating env %v", envName)
 	}
 
 	// Construct the arguments to the gym.make function
 	args := python.PyTuple_New(1)
+	defer args.DecRef()
 	python.PyTuple_SetItem(args, 0, python.PyUnicode_FromString(envName))
 
 	// Create the gym environment
@@ -115,17 +142,86 @@ func Make(envName string) (Environment, error) {
 
 	// Figure out if the environment has continuous actions or not
 	spaces := python.PyDict_GetItemString(dict, "spaces")
+	dict.IncRef()
 	defer spaces.DecRef()
+
 	actionSpace := gymEnv.GetAttrString("action_space")
 	defer actionSpace.DecRef()
-	continuousAction := actionSpace.Type() == spaces.GetAttrString("Box")
 
-	env := New(gymEnv, envName, continuousAction)
+	box := spaces.GetAttrString("Box")
+	defer box.DecRef()
+	continuousAction := actionSpace.Type() == box
+
+	discrete := spaces.GetAttrString("Discrete")
+	defer discrete.DecRef()
+
+	// Construct the action space
+	var goActionSpace Space
+	var err error
+	if continuousAction {
+		goActionSpace, err = NewBox(actionSpace)
+		if err != nil {
+			return nil, fmt.Errorf("make: could not create Box action space "+
+				"from type %v", actionSpace.Type())
+		}
+
+	} else if actionSpace.Type() == discrete {
+		goActionSpace, err = NewDiscrete(actionSpace)
+		if err != nil {
+			return nil, fmt.Errorf("make: could not create Discrete action "+
+				"space from type %v", actionSpace.Type())
+		}
+
+	} else {
+		goActionSpace = nil
+		fmt.Fprintf(os.Stderr, "make: action space %T not yet implemented",
+			actionSpace.Type())
+	}
+
+	// Construct the observation space
+	observationSpace := gymEnv.GetAttrString("observation_space")
+	if observationSpace == nil {
+		fmt.Println("\n\n Obs nil")
+	}
+	defer observationSpace.DecRef()
+	var goObservationSpace Space
+	if observationSpace.Type() == box {
+		goObservationSpace, err = NewBox(observationSpace)
+		if err != nil {
+			return nil, fmt.Errorf("make: could not create Box observation "+
+				"space from type %v", observationSpace.Type())
+		}
+
+	} else if observationSpace.Type() == discrete {
+		goObservationSpace, err = NewDiscrete(observationSpace)
+		if err != nil {
+			return nil, fmt.Errorf("make: could not create Discrete "+
+				"observation space from type %v", observationSpace.Type())
+		}
+
+	} else {
+		goObservationSpace = nil
+		fmt.Fprintf(os.Stderr, "make: observation space %T not yet "+
+			"implemented", observationSpace.Type())
+	}
+
+	env := New(gymEnv, envName, continuousAction, goActionSpace,
+		goObservationSpace)
 
 	// Register the environment with the list of all environments
 	openEnvironments[env] = struct{}{}
 
 	return env, nil
+}
+
+// ActionSpace returns the action space as a Go data structure
+func (g *GymEnv) ActionSpace() Space {
+	return g.actionSpace
+}
+
+// ObservationSpace returns the observation space as a Go data structure
+func (g *GymEnv) ObservationSpace() Space {
+	return g.observationSpace
 }
 
 // Env gets the GymEnv's Python gym environment
@@ -329,117 +425,6 @@ func Example() {
 
 	// Close the environment and package resources
 	Close()
-}
-
-// GoSliceFromPyList converts a Python List to a Go []float64 or []int.
-// The itemType specifies that the data should be returned as either a
-// "float64" or "int". The strictfail argument determines if the function
-// should fail if any errors occurred or simply skip over the erroneous
-// values in the Python List (e.g. if some element in the Python List
-// has the wrong type). Borrows python.PyObject reference.
-//
-// Adapted from:
-// https://github.com/christian-korneck/python-go/tree/master/py-bindings/outliers
-func GoSliceFromPyList(pylist *python.PyObject, itemtype string, strictfail bool) (interface{}, error) {
-	seq := pylist.GetIter() //ret val: New reference
-	if !(seq != nil && python.PyErr_Occurred() == nil) {
-		python.PyErr_Print()
-		return nil, fmt.Errorf("error creating iterator for list")
-	}
-	defer seq.DecRef()
-	tNext := seq.GetAttrString("__next__") //ret val: new ref
-	if !(tNext != nil && python.PyCallable_Check(tNext)) {
-		return nil, fmt.Errorf("iterator has no __next__ function")
-	}
-	defer tNext.DecRef()
-
-	var golist interface{}
-	var compare *python.PyObject
-	switch itemtype {
-	case "float64":
-		golist = []float64{}
-		compare = python.PyFloat_FromDouble(0)
-	case "int":
-		golist = []int{}
-		compare = python.PyLong_FromGoInt(0)
-	}
-	if compare == nil {
-		return nil, fmt.Errorf("error creating compare var")
-	}
-	defer compare.DecRef()
-
-	pytype := compare.Type() //ret val: new ref
-	if pytype == nil && python.PyErr_Occurred() != nil {
-		python.PyErr_Print()
-		return nil, fmt.Errorf("error getting type of compare var")
-	}
-	defer pytype.DecRef()
-
-	errcnt := 0
-
-	pylistLen := pylist.Length()
-	if pylistLen == -1 {
-		return nil, fmt.Errorf("error getting list length")
-	}
-
-	for i := 1; i <= pylistLen; i++ {
-		item := tNext.CallObject(nil) //ret val: new ref
-		if item == nil && python.PyErr_Occurred() != nil {
-			python.PyErr_Print()
-			return nil, fmt.Errorf("error getting next item in sequence")
-		}
-		itemType := item.Type()
-		if itemType == nil && python.PyErr_Occurred() != nil {
-			python.PyErr_Print()
-			return nil, fmt.Errorf("error getting item type")
-		}
-
-		defer itemType.DecRef()
-
-		if itemType != pytype {
-			//item has wrong type, skip it
-			if item != nil {
-				item.DecRef()
-			}
-			errcnt++
-			continue
-		}
-
-		switch itemtype {
-		case "float64":
-			itemGo := python.PyFloat_AsDouble(item)
-			if itemGo != -1 && python.PyErr_Occurred() == nil {
-				golist = append(golist.([]float64), itemGo)
-			} else {
-				if item != nil {
-					item.DecRef()
-				}
-				errcnt++
-			}
-		case "int":
-			itemGo := python.PyLong_AsLong(item)
-			if itemGo != -1 && python.PyErr_Occurred() == nil {
-				golist = append(golist.([]int), itemGo)
-			} else {
-				if item != nil {
-					item.DecRef()
-				}
-				errcnt++
-			}
-		}
-
-		if item != nil {
-			item.DecRef()
-			item = nil
-		}
-	}
-	if errcnt > 0 {
-		if strictfail {
-			return nil, fmt.Errorf("could not add %d values (wrong type?)", errcnt)
-		}
-	}
-
-	return golist, nil
 }
 
 // F64SliceFromIter converts a Python iterable to a []float64. Borrows

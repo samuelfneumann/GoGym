@@ -76,6 +76,8 @@ func NewPixelObservation(env *gogym.GymEnv, pixelsOnly bool,
 		newEnv,
 		fmt.Sprintf("Pixel(%v)", env.Name()),
 		env.ContinuousAction(),
+		env.ActionSpace(),
+		env.ObservationSpace(),
 	)
 
 	return &PixelObservation{
