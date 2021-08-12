@@ -1,10 +1,12 @@
 # GoGym: Go Bindings for OpenAI Gym
 
-This Go module provides functionality to access [OpenAI Gym](https://github.com/openai/gym) in Go using `cgo` and the C `Python` API. The API has been kept very similar to the API of OpenAI Gym, except that certain aspects have been made more "Go-like". For example, the `make` factory has been changed to be called 	`New`, to keep consistent with the Go convention of constructor names. Another example is that action and observation spaces are unexported, and they must be accessed through their respective getter methods. Additionally, many functions return Go `error`s, when the OpenAI Gym API does not.
+This `Go` module provides functionality to access [OpenAI Gym](https://github.com/openai/gym) in Go using `cgo` and the C `Python` API. The API has been kept very similar to the API of OpenAI Gym, except that certain aspects have been made more "Go-like". For example, action and observation spaces are unexported, and they must be accessed through their respective getter methods. Additionally, many functions return Go `error`s, when the OpenAI Gym API does not.
 
-This module simply provides `Go` bindings for OpenAI Gym. The module uses an embedded `Python` interpreter in `Go` code, so the actual gym code running under-the-hood is still `Python`. So don't expect `Go`-level performance. If you wanted reinforcement learning environments implemented completely in `Go`, see my [GoLearn: Reinforcement Learning in Go](https://github.com/samuelfneumann/GoLearn) module.
+This module simply provides `Go` bindings for OpenAI Gym. The module uses an embedded `Python` interpreter in `Go` code, so the actual gym code running under-the-hood is still `Python`. Don't expect `Go`-level performance. If you wanted reinforcement learning environments implemented completely in `Go`, see my [GoLearn: Reinforcement Learning in Go](https://github.com/samuelfneumann/GoLearn) module.
 
-Currently, only the default OpenAI Gym environments are implemented. You cannot yet use the OpenAI Gym wrappers to decorate environments. Coming soon!
+**Current State**: Classic control, MuJoCo, and Atari environments work as returned by `gym.make()` in `Python`. Only the `ClipAction` wrapper is implemented fully. Rendering of environments, either through the `Render()` method or through `PixelObservationWrapper`s does not work. Environments must either have `Box` or `Discrete` observation and action spaces. Other spaces have not been implemented. These environments will still work, you just won't be able to inspect their observation or action spaces with the `ObservationSpace()` and `ActionSpace()` methods respectively.
+
+If all you need is to be able to call the `Python` functions/methods `gym.make()`, `env.step()`, `env.reset()`, and `env.seed()`, then you can consider this module exactly what you need. If you need some of the fancier Open AI Gym tools, like all their wrappers, stay tuned! Those are soon to come!
 
 # Installation and Dependencies
 This package has the following dependencies:
@@ -38,6 +40,29 @@ To install `Python 3.7` (along with the `Python3.7-dev` package) from source:
 4. Run `./configure --enable-shared --enable-optimizations`
 5. Run `sudo make install`
 6. Enjoy your new `Python 3.7` installation! Why not install `gnureadline`?
+
+
+# Example Usage
+```
+env, err := Make("Ant-v2")
+if err != nil {
+	panic(err)
+}
+
+_, err = env.Reset()
+if err != nil {
+	panic(err)
+}
+
+for i := 0; i < 10; i++ {
+	obs, reward, done, err := env.Step(env.ActionSpace().Sample())
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(obs, reward, done)
+}
+```
+
 
 # Known Issues
 * The rendering functionality of OpenAI Gym is currently not supported. For some reason the `C Python API` cannot find the `gym.error` package.
