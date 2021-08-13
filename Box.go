@@ -107,7 +107,7 @@ func NewBox(boxSpace *python.PyObject) (Space, error) {
 	}, nil
 }
 
-// Sample takes a sample from within the spaces bounds
+// Sample takes a sample from within the space bounds
 func (b *Box) Sample() []*mat.VecDense {
 	sample := b.rng.Rand(nil)
 	return []*mat.VecDense{mat.NewVecDense(len(sample), sample)}

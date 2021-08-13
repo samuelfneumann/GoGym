@@ -70,7 +70,10 @@ func (d DictSpace) Seed(seed uint64) {
 	}
 }
 
-// Sample takes a sample from within the space bounds
+// Sample takes a sample from within the space bounds. If a composite
+// space exists in the DictSpace, then its Sample() method is
+// recursively called, and all samples are placed in the returned
+// slice sequentially.
 func (d DictSpace) Sample() []*mat.VecDense {
 	sample := make([]*mat.VecDense, d.Len())
 
@@ -82,6 +85,9 @@ func (d DictSpace) Sample() []*mat.VecDense {
 
 		case *Discrete:
 			sample[i] = sampleSpace.Sample()[0]
+
+		case DictSpace:
+			sample = append(sample, sampleSpace.Sample()...)
 
 		default:
 			panic(fmt.Sprintf("sample: cannot sample space type %T", space))
@@ -115,8 +121,9 @@ func (d DictSpace) Contains(in interface{}) bool {
 	return true
 }
 
-// Low returns the lower bounds of the space. A DictSpace can only
-// have a lower bound if it contains only Discrete and Box spaces.
+// Low returns the lower bounds of the space. If a composite space
+// exists in the DictSpace, its Low() method is called recursively, and
+// all lower bounds are placed in the returned slice sequentially.
 func (d DictSpace) Low() []*mat.VecDense {
 	low := make([]*mat.VecDense, d.Len())
 	i := 0
@@ -128,6 +135,9 @@ func (d DictSpace) Low() []*mat.VecDense {
 		case *Discrete:
 			low[i] = lowSpace.Low()[0]
 
+		case DictSpace:
+			low = append(low, lowSpace.Low()...)
+
 		default:
 			panic(fmt.Sprintf("low: cannot compute lower bound of space "+
 				"type %T", space))
@@ -137,8 +147,9 @@ func (d DictSpace) Low() []*mat.VecDense {
 	return low
 }
 
-// High returns the upper bounds of the space. A DictSpace can only
-// have an upper bound if it contains only Discrete and Box spaces.
+// High returns the upper bounds of the space. If a composite space
+// exists in the DictSpace, its High() method is called recursively, and
+// all upper bounds are placed in the returned slice sequentially.
 func (d DictSpace) High() []*mat.VecDense {
 	high := make([]*mat.VecDense, d.Len())
 	i := 0
@@ -149,6 +160,9 @@ func (d DictSpace) High() []*mat.VecDense {
 
 		case *Discrete:
 			high[i] = highSpace.High()[0]
+
+		case DictSpace:
+			high = append(high, highSpace.High()...)
 
 		default:
 			panic(fmt.Sprintf("high: cannot compute upper bound of space "+
