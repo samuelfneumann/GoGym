@@ -21,6 +21,13 @@ var openEnvironments map[Environment]struct{} = make(map[Environment]struct{})
 
 // Python modules
 var gym *python.PyObject
+var dict *python.PyObject
+
+// Space types
+var spaces *python.PyObject
+var boxSpace *python.PyObject
+var discreteSpace *python.PyObject
+var dictSpace *python.PyObject
 
 // Closed indicates whether the package has been closed or not
 var Closed bool = false
@@ -41,6 +48,26 @@ func init() {
 	defer gymModule.DecRef()
 	gym = python.PyImport_AddModule("gym")
 	gymModule.IncRef()
+
+	// ! These needs to be closed after
+	dict = python.PyModule_GetDict(gym)
+	dict.IncRef()
+
+	spaces = python.PyDict_GetItemString(dict, "spaces")
+	spaces.IncRef()
+
+	boxSpace = spaces.GetAttrString("Box")
+	if boxSpace == nil {
+		panic("init: could not get Python Box space type")
+	}
+	discreteSpace = spaces.GetAttrString("Discrete")
+	if discreteSpace == nil {
+		panic("init: could not get Python Discrete space type")
+	}
+	dictSpace = spaces.GetAttrString("Dict")
+	if dictSpace == nil {
+		panic("init: could not get Python Dict space type")
+	}
 }
 
 // Environment describes an OpenAI Gym environment
@@ -96,6 +123,9 @@ type GymEnv struct {
 // New creates and returns a new *GymEnv
 func New(env *python.PyObject, envName string, continuousAction bool,
 	actionSpace, observationSpace Space) Environment {
+	if Closed {
+		panic("new: cannot create environment when package closed")
+	}
 	return &GymEnv{
 		env:              env,
 		envName:          envName,
@@ -108,10 +138,10 @@ func New(env *python.PyObject, envName string, continuousAction bool,
 // Make returns a new environment with the given name. It is equivalent
 // to gym.make(envName) in Python's OpenAI Gym.
 func Make(envName string) (Environment, error) {
+	if Closed {
+		panic("make: cannot create environment when package closed")
+	}
 	// Get the gym.make function
-	dict := python.PyModule_GetDict(gym)
-	dict.IncRef()
-	defer dict.DecRef()
 	makeEnv := python.PyDict_GetItemString(dict, "make")
 	makeEnv.IncRef()
 	defer makeEnv.DecRef()
@@ -141,19 +171,9 @@ func Make(envName string) (Environment, error) {
 	}
 
 	// Figure out if the environment has continuous actions or not
-	spaces := python.PyDict_GetItemString(dict, "spaces")
-	dict.IncRef()
-	defer spaces.DecRef()
-
 	actionSpace := gymEnv.GetAttrString("action_space")
 	defer actionSpace.DecRef()
-
-	box := spaces.GetAttrString("Box")
-	defer box.DecRef()
-	continuousAction := actionSpace.Type() == box
-
-	discrete := spaces.GetAttrString("Discrete")
-	defer discrete.DecRef()
+	continuousAction := actionSpace.Type() == boxSpace
 
 	// Construct the action space
 	var goActionSpace Space
@@ -165,7 +185,7 @@ func Make(envName string) (Environment, error) {
 				"from type %v", actionSpace.Type())
 		}
 
-	} else if actionSpace.Type() == discrete {
+	} else if actionSpace.Type() == discreteSpace {
 		goActionSpace, err = NewDiscrete(actionSpace)
 		if err != nil {
 			return nil, fmt.Errorf("make: could not create Discrete action "+
@@ -185,14 +205,14 @@ func Make(envName string) (Environment, error) {
 	}
 	defer observationSpace.DecRef()
 	var goObservationSpace Space
-	if observationSpace.Type() == box {
+	if observationSpace.Type() == boxSpace {
 		goObservationSpace, err = NewBox(observationSpace)
 		if err != nil {
 			return nil, fmt.Errorf("make: could not create Box observation "+
 				"space from type %v", observationSpace.Type())
 		}
 
-	} else if observationSpace.Type() == discrete {
+	} else if observationSpace.Type() == discreteSpace {
 		goObservationSpace, err = NewDiscrete(observationSpace)
 		if err != nil {
 			return nil, fmt.Errorf("make: could not create Discrete "+
@@ -375,9 +395,14 @@ func Close() {
 			env.Close()
 		}
 
-		// Decrement the reference count for the gym and numpy modules
+		// Decrement the reference count for the gym module
 		gym.DecRef()
-		// numpy.DecRef()
+
+		// Decrement spaces counters
+		spaces.DecRef()
+		boxSpace.DecRef()
+		discreteSpace.DecRef()
+		dictSpace.DecRef()
 
 		// Close Python interpreter
 		python.Py_Finalize()
@@ -429,6 +454,10 @@ func Example() {
 
 // F64SliceFromIter converts a Python iterable to a []float64. Borrows
 // python.PyObject reference.
+//
+// Note: this is used to convert NumPy vectors to []float64. Since the
+// NumPy C API is currently not supported by this library, no error
+// checking is done.
 func F64SliceFromIter(obj *python.PyObject) ([]float64, error) {
 	seq := obj.GetIter()
 	defer seq.DecRef()
@@ -442,7 +471,36 @@ func F64SliceFromIter(obj *python.PyObject) ([]float64, error) {
 			return nil, fmt.Errorf("f64SliceFromIter: nil item at index %v", i)
 		}
 
+		// No error checking: we need to use the NumPy C API for this
+
 		data[i] = python.PyFloat_AsDouble(item)
+		item.DecRef()
+	}
+
+	return data, nil
+}
+
+// StringSliceFromIter converts a Python iterable to a []string. Borrows
+// python.PyObject reference.
+func StringSliceFromIter(obj *python.PyObject) ([]string, error) {
+	seq := obj.GetIter()
+	defer seq.DecRef()
+	next := seq.GetAttrString("__next__")
+	defer next.DecRef()
+
+	data := make([]string, obj.Length())
+	for i := 0; i < obj.Length(); i++ {
+		item := next.CallObject(nil)
+		if item == nil {
+			return nil, fmt.Errorf("stringSliceFromIter: nil item at index %v", i)
+		}
+
+		if !python.PyUnicode_Check(item) {
+			return nil, fmt.Errorf("stringSliceFromIter: item at index %v is "+
+				"not a string", i)
+		}
+
+		data[i] = python.PyUnicode_AsUTF8(item)
 		item.DecRef()
 	}
 
@@ -461,7 +519,12 @@ func IntSliceFromIter(obj *python.PyObject) ([]int, error) {
 	for i := 0; i < obj.Length(); i++ {
 		item := next.CallObject(nil)
 		if item == nil {
-			return nil, fmt.Errorf("f64SliceFromIter: nil item at index %v", i)
+			return nil, fmt.Errorf("intSliceFromIter: nil item at index %v", i)
+		}
+
+		if !python.PyLong_Check(item) {
+			return nil, fmt.Errorf("intSliceFromIter: item at index %v is "+
+				"not an int", i)
 		}
 
 		data[i] = python.PyLong_AsLong(item)

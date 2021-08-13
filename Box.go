@@ -20,19 +20,19 @@ import (
 // and converts it to a Go version.
 type Space interface {
 	// Sample takes a sample from within the spaces bounds
-	Sample() *mat.VecDense
+	Sample() []*mat.VecDense
 
 	// Contains returns whether x is in the space
-	Contains(*mat.VecDense) bool
+	Contains(x interface{}) bool
 
 	// Seed seeds the sampler for the space
 	Seed(uint64)
 
 	// Low returns the lower bounds of the space
-	Low() *mat.VecDense
+	Low() []*mat.VecDense
 
 	// High returns the upper bounds of the space
-	High() *mat.VecDense
+	High() []*mat.VecDense
 }
 
 // Box represents a (possibly unbounded) box in R^n. Specifically, a
@@ -108,19 +108,28 @@ func NewBox(boxSpace *python.PyObject) (Space, error) {
 }
 
 // Sample takes a sample from within the spaces bounds
-func (b *Box) Sample() *mat.VecDense {
+func (b *Box) Sample() []*mat.VecDense {
 	sample := b.rng.Rand(nil)
-	return mat.NewVecDense(len(sample), sample)
+	return []*mat.VecDense{mat.NewVecDense(len(sample), sample)}
 }
 
-// Contains returns whether x is in the space
-func (b *Box) Contains(x *mat.VecDense) bool {
-	if x.Len() != b.Low().Len() {
+// Contains returns whether in is in the space. The argument in must
+// be either a []float64 or *mat.VecDense
+func (b *Box) Contains(in interface{}) bool {
+	x, ok := in.([]float64)
+	if !ok {
+		vec, ok := in.(*mat.VecDense)
+		if !ok {
+			return false
+		}
+		x = vec.RawVector().Data
+	}
+	if len(x) != b.Low()[0].Len() {
 		return false
 	}
 
-	for i := 0; i < x.Len(); i++ {
-		if x.AtVec(i) < b.Low().AtVec(i) || x.AtVec(i) > b.High().AtVec(i) {
+	for i := range x {
+		if x[i] < b.Low()[0].AtVec(i) || x[i] > b.High()[0].AtVec(i) {
 			return false
 		}
 	}
@@ -128,13 +137,13 @@ func (b *Box) Contains(x *mat.VecDense) bool {
 }
 
 // High returns the upper bounds of the space
-func (b *Box) High() *mat.VecDense {
-	return b.high
+func (b *Box) High() []*mat.VecDense {
+	return []*mat.VecDense{b.high}
 }
 
 // Low returns the lower bounds of the space
-func (b *Box) Low() *mat.VecDense {
-	return b.low
+func (b *Box) Low() []*mat.VecDense {
+	return []*mat.VecDense{b.low}
 }
 
 // BoundedAbove returns whether the space is bounded above

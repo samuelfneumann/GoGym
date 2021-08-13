@@ -47,22 +47,35 @@ func NewDiscrete(space *python.PyObject) (Space, error) {
 }
 
 // Sample takes a sample from within the spaces bounds
-func (d *Discrete) Sample() *mat.VecDense {
-	return mat.NewVecDense(1, []float64{float64(int(d.rng.Rand()) % d.n)})
+func (d *Discrete) Sample() []*mat.VecDense {
+	return []*mat.VecDense{
+		mat.NewVecDense(1, []float64{
+			float64(int(d.rng.Rand()) % d.n),
+		}),
+	}
 }
 
-// Contains returns whether x is in the space
-func (d *Discrete) Contains(x *mat.VecDense) bool {
-	intX := int(x.AtVec(0))
-	return x.Len() == 1 && intX < d.n && intX >= 0
+// Contains returns whether in is in the space. The argument in
+// should be a []float64 or *mat.VecDense.
+func (d *Discrete) Contains(in interface{}) bool {
+	x, ok := in.([]float64)
+	if !ok {
+		vec, ok := in.(*mat.VecDense)
+		if !ok {
+			return false
+		}
+		x = vec.RawVector().Data
+	}
+	intX := int(x[0])
+	return len(x) == 1 && intX < d.n && intX >= 0
 }
 
 // High returns the upper bounds of the space
-func (d *Discrete) High() *mat.VecDense {
-	return mat.NewVecDense(1, []float64{float64(d.n - 1)})
+func (d *Discrete) High() []*mat.VecDense {
+	return []*mat.VecDense{mat.NewVecDense(1, []float64{float64(d.n - 1)})}
 }
 
 // Low returns the lower bounds of the space
-func (d *Discrete) Low() *mat.VecDense {
-	return mat.NewVecDense(1, []float64{1.0})
+func (d *Discrete) Low() []*mat.VecDense {
+	return []*mat.VecDense{mat.NewVecDense(1, []float64{1.0})}
 }

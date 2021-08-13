@@ -35,6 +35,7 @@ func init() {
 // https://github.com/openai/gym/blob/master/gym/wrappers/clip_action.py
 type ClipAction struct {
 	gogym.Environment
+	// wrapped Environment
 }
 
 // NewClipAction returns a new gogym.Environment that clips the actions
@@ -68,3 +69,8 @@ func NewClipAction(env gogym.Environment) (gogym.Environment, error) {
 		Environment: newGymEnv,
 	}, nil
 }
+
+// func (c *ClippedAction) Close() {
+//	c.wrappedEnvironment.Close()
+// 	c.Close()
+//}

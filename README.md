@@ -75,3 +75,7 @@ for i := 0; i < 10; i++ {
 - [ ] Make all environments work, even those that do not implement the *regular* environment API
 - [ ] Add all wrappers
 - [ ] Add all spaces
+
+# ToDo
+- [ ] Does `New()` need to register an environment with `openEnvironments`? I believe so. With a wrapped environment, then you'd have registered the wrapped and wrapping environments, and when you run `Close()` it will `DecRef()` both environments. 
+- [ ] When you call the `Close()` method on a wrapping environment, it should actually call `Close()` on the wrapped environment and its wrapping environment. E.g. you'd want to call `Close()` on both the `ClipAction` environment and the `MountainCar` environment it wraps. So instead, a wrapping environment should have an embedded `Environment` as well as a `*python.PyObject`. It should then call `DecRef()` on its pyobject, and then `Close()` on its wrapped environment. Instead of line 57 in ClipAction, we can do this. Don't `DecRef()` the old environment until the wrapping environment is `Close()` first.
