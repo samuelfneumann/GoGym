@@ -414,6 +414,7 @@ func Close() {
 		boxSpace.DecRef()
 		discreteSpace.DecRef()
 		dictSpace.DecRef()
+		tupleSpace.DecRef()
 
 		// Close Python interpreter
 		python.Py_Finalize()

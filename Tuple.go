@@ -24,6 +24,7 @@ func NewTupleSpace(space *python.PyObject) (Space, error) {
 	if !(space.Type() == tupleSpace) {
 		return nil, fmt.Errorf("newTupleSpace: space is not a tuple space")
 	}
+
 	tupleSpace := space.GetAttrString("spaces")
 	defer tupleSpace.DecRef()
 	if tupleSpace == nil {
