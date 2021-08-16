@@ -61,14 +61,17 @@ func init() {
 	if boxSpace == nil {
 		panic("init: could not get Python BoxSpace space type")
 	}
+
 	discreteSpace = spaces.GetAttrString("Discrete")
 	if discreteSpace == nil {
 		panic("init: could not get Python DiscreteSpace space type")
 	}
+
 	dictSpace = spaces.GetAttrString("Dict")
 	if dictSpace == nil {
 		panic("init: could not get Python Dict space type")
 	}
+
 	tupleSpace = spaces.GetAttrString("Tuple")
 	if dictSpace == nil {
 		panic("init: could not get Python Tuple space type")
@@ -131,13 +134,16 @@ func New(env *python.PyObject, envName string, continuousAction bool,
 	if Closed {
 		panic("new: cannot create environment when package closed")
 	}
-	return &GymEnv{
+	gymEnv := &GymEnv{
 		env:              env,
 		envName:          envName,
 		continuousAction: continuousAction,
 		actionSpace:      actionSpace,
 		observationSpace: observationSpace,
 	}
+
+	openEnvironments[gymEnv] = struct{}{}
+	return gymEnv
 }
 
 // Make returns a new environment with the given name. It is equivalent
