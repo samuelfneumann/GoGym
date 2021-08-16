@@ -10,23 +10,27 @@ import (
 	"gonum.org/v1/gonum/stat/distuv"
 )
 
-// Discrete represents a space of discrete numbers: (0, 1, 2, ..., n-1).
+// DiscreteSpace represents a space of discrete numbers: (0, 1, 2, ..., n-1).
 //
-// The Discrete space must be constructed from its Python equivalent.
-type Discrete struct {
+// The DiscreteSpace space must be constructed from its Python equivalent.
+type DiscreteSpace struct {
 	*python.PyObject
 	rand.Source
 	rng distuv.Categorical
 	n   int // Number of actions, actions in (0, 1, ..., n-1)
 }
 
-// NewDiscrete takes a Python gym.spaces.Discrete and converts it into
+// NewDiscreteSpace takes a Python gym.spaces.DiscreteSpace and converts it into
 // its Go counterpart.
-func NewDiscrete(space *python.PyObject) (Space, error) {
+func NewDiscreteSpace(space *python.PyObject) (Space, error) {
+	if !(space.Type() == discreteSpace) {
+		return nil, fmt.Errorf("newDiscreteSpace: space is not a discrete " +
+			"space")
+	}
 	pythonN := space.GetAttrString("n")
 	defer pythonN.DecRef()
 	if pythonN == nil {
-		return nil, fmt.Errorf("newDiscrete: space %v is not a Discrete",
+		return nil, fmt.Errorf("newDiscreteSpace: space %v is not a DiscreteSpace",
 			space.Type())
 	}
 	n := python.PyLong_AsLong(pythonN)
@@ -38,7 +42,7 @@ func NewDiscrete(space *python.PyObject) (Space, error) {
 	}
 	rng := distuv.NewCategorical(weights, src)
 
-	return &Discrete{
+	return &DiscreteSpace{
 		PyObject: space,
 		Source:   src,
 		rng:      rng,
@@ -47,7 +51,7 @@ func NewDiscrete(space *python.PyObject) (Space, error) {
 }
 
 // Sample takes a sample from within the spaces bounds
-func (d *Discrete) Sample() []*mat.VecDense {
+func (d *DiscreteSpace) Sample() []*mat.VecDense {
 	return []*mat.VecDense{
 		mat.NewVecDense(1, []float64{
 			float64(int(d.rng.Rand()) % d.n),
@@ -57,7 +61,7 @@ func (d *Discrete) Sample() []*mat.VecDense {
 
 // Contains returns whether in is in the space. The argument in
 // should be a []float64 or *mat.VecDense.
-func (d *Discrete) Contains(in interface{}) bool {
+func (d *DiscreteSpace) Contains(in interface{}) bool {
 	x, ok := in.([]float64)
 	if !ok {
 		vec, ok := in.(*mat.VecDense)
@@ -71,11 +75,11 @@ func (d *Discrete) Contains(in interface{}) bool {
 }
 
 // High returns the upper bounds of the space
-func (d *Discrete) High() []*mat.VecDense {
+func (d *DiscreteSpace) High() []*mat.VecDense {
 	return []*mat.VecDense{mat.NewVecDense(1, []float64{float64(d.n - 1)})}
 }
 
 // Low returns the lower bounds of the space
-func (d *Discrete) Low() []*mat.VecDense {
+func (d *DiscreteSpace) Low() []*mat.VecDense {
 	return []*mat.VecDense{mat.NewVecDense(1, []float64{1.0})}
 }

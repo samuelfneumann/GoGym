@@ -28,6 +28,7 @@ var spaces *python.PyObject
 var boxSpace *python.PyObject
 var discreteSpace *python.PyObject
 var dictSpace *python.PyObject
+var tupleSpace *python.PyObject
 
 // Closed indicates whether the package has been closed or not
 var Closed bool = false
@@ -58,15 +59,19 @@ func init() {
 
 	boxSpace = spaces.GetAttrString("Box")
 	if boxSpace == nil {
-		panic("init: could not get Python Box space type")
+		panic("init: could not get Python BoxSpace space type")
 	}
 	discreteSpace = spaces.GetAttrString("Discrete")
 	if discreteSpace == nil {
-		panic("init: could not get Python Discrete space type")
+		panic("init: could not get Python DiscreteSpace space type")
 	}
 	dictSpace = spaces.GetAttrString("Dict")
 	if dictSpace == nil {
 		panic("init: could not get Python Dict space type")
+	}
+	tupleSpace = spaces.GetAttrString("Tuple")
+	if dictSpace == nil {
+		panic("init: could not get Python Tuple space type")
 	}
 }
 
@@ -179,16 +184,16 @@ func Make(envName string) (Environment, error) {
 	var goActionSpace Space
 	var err error
 	if continuousAction {
-		goActionSpace, err = NewBox(actionSpace)
+		goActionSpace, err = NewBoxSpace(actionSpace)
 		if err != nil {
-			return nil, fmt.Errorf("make: could not create Box action space "+
+			return nil, fmt.Errorf("make: could not create BoxSpace action space "+
 				"from type %v", actionSpace.Type())
 		}
 
 	} else if actionSpace.Type() == discreteSpace {
-		goActionSpace, err = NewDiscrete(actionSpace)
+		goActionSpace, err = NewDiscreteSpace(actionSpace)
 		if err != nil {
-			return nil, fmt.Errorf("make: could not create Discrete action "+
+			return nil, fmt.Errorf("make: could not create DiscreteSpace action "+
 				"space from type %v", actionSpace.Type())
 		}
 
@@ -206,16 +211,16 @@ func Make(envName string) (Environment, error) {
 	defer observationSpace.DecRef()
 	var goObservationSpace Space
 	if observationSpace.Type() == boxSpace {
-		goObservationSpace, err = NewBox(observationSpace)
+		goObservationSpace, err = NewBoxSpace(observationSpace)
 		if err != nil {
-			return nil, fmt.Errorf("make: could not create Box observation "+
+			return nil, fmt.Errorf("make: could not create BoxSpace observation "+
 				"space from type %v", observationSpace.Type())
 		}
 
 	} else if observationSpace.Type() == discreteSpace {
-		goObservationSpace, err = NewDiscrete(observationSpace)
+		goObservationSpace, err = NewDiscreteSpace(observationSpace)
 		if err != nil {
-			return nil, fmt.Errorf("make: could not create Discrete "+
+			return nil, fmt.Errorf("make: could not create DiscreteSpace "+
 				"observation space from type %v", observationSpace.Type())
 		}
 

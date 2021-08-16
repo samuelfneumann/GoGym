@@ -22,8 +22,12 @@ type DictSpace struct {
 
 // NewDictSpace takes a Python gym.spaces.Dict and converts it into its Go
 // counterpart.
-func NewDictSpace(dictSpace *python.PyObject) (Space, error) {
-	dictSpaces := dictSpace.GetAttrString("spaces")
+func NewDictSpace(space *python.PyObject) (Space, error) {
+	if !(space.Type() == dictSpace) {
+		return nil, fmt.Errorf("newDictSpace: space is not a dict space")
+	}
+
+	dictSpaces := space.GetAttrString("spaces")
 	defer spaces.DecRef()
 	if spaces == nil || !python.PyDict_Check(dictSpaces) {
 		return nil, fmt.Errorf("newDictSpace: space is not a DictSpace")
@@ -48,22 +52,8 @@ func NewDictSpace(dictSpace *python.PyObject) (Space, error) {
 	i := 0
 	for _, key := range goKeys {
 		spaceAtKey := python.PyDict_GetItemString(dictSpaces, key)
+		value, err := FromPythonSpace(spaceAtKey)
 
-		var value Space
-		switch spaceAtKey.Type() {
-		case boxSpace:
-			value, err = NewBox(spaceAtKey)
-
-		case discreteSpace:
-			value, err = NewDiscrete(spaceAtKey)
-
-		case dictSpace:
-			value, err = NewDictSpace(spaceAtKey)
-
-		default:
-			return nil, fmt.Errorf("newDictSpace: space %v not yet "+
-				"implemented", spaceAtKey.Type())
-		}
 		if err != nil {
 			return nil, fmt.Errorf("newDictSpace: could not convert space: %v",
 				err)
@@ -87,30 +77,16 @@ func (d *DictSpace) Seed(seed uint64) {
 // recursively called, and all samples are placed in the returned
 // slice sequentially.
 func (d *DictSpace) Sample() []*mat.VecDense {
-	sample := make([]*mat.VecDense, d.Len())
+	sample := make([]*mat.VecDense, 0, d.Len())
 
-	i := 0
 	for _, space := range d.values {
-		switch sampleSpace := space.(type) {
-		case *Box:
-			sample[i] = sampleSpace.Sample()[0]
-
-		case *Discrete:
-			sample[i] = sampleSpace.Sample()[0]
-
-		case *DictSpace:
-			sample = append(sample, sampleSpace.Sample()...)
-
-		default:
-			panic(fmt.Sprintf("sample: cannot sample space type %T", space))
-		}
-		i++
+		sample = append(sample, space.Sample()...)
 	}
 	return sample
 }
 
 // Contains returns whether in is in the space. The argument in must
-// be either a map[string]interface{}
+// be a map[string]interface{}
 func (d *DictSpace) Contains(in interface{}) bool {
 	x, ok := in.(map[string]interface{})
 	if !ok {
@@ -138,23 +114,9 @@ func (d *DictSpace) Contains(in interface{}) bool {
 // all lower bounds are placed in the returned slice sequentially.
 func (d *DictSpace) Low() []*mat.VecDense {
 	low := make([]*mat.VecDense, 0, d.Len())
-	i := 0
+
 	for _, space := range d.values {
-		switch lowSpace := space.(type) {
-		case *Box:
-			low = append(low, lowSpace.Low()[0])
-
-		case *Discrete:
-			low = append(low, lowSpace.Low()[0])
-
-		case *DictSpace:
-			low = append(low, lowSpace.Low()...)
-
-		default:
-			panic(fmt.Sprintf("low: cannot compute lower bound of space "+
-				"type %T", space))
-		}
-		i++
+		low = append(low, space.Low()...)
 	}
 	return low
 }
@@ -162,25 +124,11 @@ func (d *DictSpace) Low() []*mat.VecDense {
 // High returns the upper bounds of the space. If a composite space
 // exists in the DictSpace, its High() method is called recursively, and
 // all upper bounds are placed in the returned slice sequentially.
-func (d DictSpace) High() []*mat.VecDense {
+func (d *DictSpace) High() []*mat.VecDense {
 	high := make([]*mat.VecDense, 0, d.Len())
-	i := 0
+
 	for _, space := range d.values {
-		switch highSpace := space.(type) {
-		case *Box:
-			high = append(high, highSpace.High()[0])
-
-		case *Discrete:
-			high = append(high, highSpace.High()[0])
-
-		case *DictSpace:
-			high = append(high, highSpace.High()...)
-
-		default:
-			panic(fmt.Sprintf("high: cannot compute upper bound of space "+
-				"type %T", space))
-		}
-		i++
+		high = append(high, space.High()...)
 	}
 	return high
 }
