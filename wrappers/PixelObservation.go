@@ -35,6 +35,7 @@ func init() {
 // gogym.*GymEnv.Render() method panics.
 type PixelObservation struct {
 	gogym.Environment
+	wrapped gogym.Environment
 }
 
 // NewPixelObservation returns a new gogym.Environment with pixel
@@ -69,8 +70,6 @@ func NewPixelObservation(env *gogym.GymEnv, pixelsOnly bool,
 		panic("pixelObservations: could not wrap environment")
 	}
 
-	env.Env().DecRef()
-
 	// Create the new gogym Environment
 	newGymEnv := gogym.New(
 		newEnv,
@@ -82,5 +81,15 @@ func NewPixelObservation(env *gogym.GymEnv, pixelsOnly bool,
 
 	return &PixelObservation{
 		Environment: newGymEnv,
+		wrapped:     env,
 	}, nil
+}
+
+// Close performs cleanup of environment resources
+func (p *PixelObservation) Close() {
+	// Close the wrapped environment
+	p.wrapped.Close()
+
+	// Close this environment
+	p.Environment.Close()
 }
