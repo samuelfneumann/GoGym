@@ -14,6 +14,7 @@ var clipActionModule *python.PyObject
 func init() {
 	// Create the gym.wrappers.clip_action Python module
 	wrappersModule := python.PyImport_ImportModule("gym.wrappers.clip_action")
+	defer wrappersModule.DecRef()
 	if wrappersModule == nil {
 		if python.PyErr_Occurred() != nil {
 			fmt.Println()
@@ -24,7 +25,6 @@ func init() {
 		}
 		panic("init: could not import gym.wrappers.clip_action")
 	}
-	defer wrappersModule.DecRef()
 	clipActionModule = python.PyImport_AddModule("gym.wrappers.clip_action")
 	wrappersModule.IncRef()
 }
@@ -35,7 +35,7 @@ func init() {
 // https://github.com/openai/gym/blob/master/gym/wrappers/clip_action.py
 type ClipAction struct {
 	gogym.Environment
-	// wrapped Environment
+	wrapped gogym.Environment
 }
 
 // NewClipAction returns a new gogym.Environment that clips the actions
@@ -51,10 +51,8 @@ func NewClipAction(env gogym.Environment) (gogym.Environment, error) {
 			fmt.Println("==================================")
 			fmt.Println()
 		}
-		panic("clipAction: could not wrap environment")
+		return nil, fmt.Errorf("clipAction: could not wrap environment")
 	}
-
-	env.Env().DecRef()
 
 	// Create the new gogym Environment
 	newGymEnv := gogym.New(
@@ -67,10 +65,15 @@ func NewClipAction(env gogym.Environment) (gogym.Environment, error) {
 
 	return &ClipAction{
 		Environment: newGymEnv,
+		wrapped:     env,
 	}, nil
 }
 
-// func (c *ClippedAction) Close() {
-//	c.wrappedEnvironment.Close()
-// 	c.Close()
-//}
+// Close performs cleanup of environment resources
+func (c *ClipAction) Close() {
+	// Close the wrapped environment
+	c.wrapped.Close()
+
+	// Close this environment
+	c.Environment.Close()
+}

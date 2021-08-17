@@ -37,4 +37,6 @@ func TestNewClipAction(t *testing.T) {
 	if err != nil {
 		t.Errorf("step: %v", err)
 	}
+
+	env.Close()
 }
