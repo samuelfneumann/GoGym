@@ -24,6 +24,7 @@ type BoxSpace struct {
 	rng              *distmv.Uniform
 	rand.Source
 	low, high                  *mat.VecDense
+	shape                      []int
 	boundedBelow, boundedAbove []bool
 }
 
@@ -32,6 +33,18 @@ type BoxSpace struct {
 func NewBoxSpace(space *python.PyObject) (Space, error) {
 	if !(space.Type() == boxSpace) {
 		return nil, fmt.Errorf("newBoxSpace: space is not a box space")
+	}
+
+	// Shape
+	shape := space.GetAttrString("shape")
+	defer shape.DecRef()
+	if shape == nil {
+		return nil, fmt.Errorf("newBoxSpace: space %v is not a BoxSpace",
+			space.Type())
+	}
+	goShape, err := IntSliceFromIter(shape)
+	if err != nil {
+		return nil, fmt.Errorf("newBoxShape: could not compute shape: %v", err)
 	}
 
 	// Lower bounds
@@ -82,6 +95,7 @@ func NewBoxSpace(space *python.PyObject) (Space, error) {
 		PyObject:     space,
 		low:          mat.NewVecDense(len(goLow), goLow),
 		high:         mat.NewVecDense(len(goHigh), goHigh),
+		shape:        goShape,
 		rng:          rng,
 		Source:       src,
 		boundedBelow: boundedBelow,

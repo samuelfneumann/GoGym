@@ -73,7 +73,7 @@ func init() {
 	}
 
 	tupleSpace = spaces.GetAttrString("Tuple")
-	if dictSpace == nil {
+	if tupleSpace == nil {
 		panic("init: could not get Python Tuple space type")
 	}
 }
