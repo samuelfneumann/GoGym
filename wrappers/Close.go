@@ -13,6 +13,8 @@ func Close() {
 	if !Closed {
 		pixelModule.DecRef()
 		clipActionModule.DecRef()
+		flattenObservationModule.DecRef()
+		rescaleActionModule.DecRef()
 	}
 	Closed = true
 

@@ -8,14 +8,14 @@ import (
 	"gonum.org/v1/gonum/mat"
 )
 
-func TestNewClipAction(t *testing.T) {
+func TestNewFlattenObservation(t *testing.T) {
 	// Create the environment
 	env, err := gogym.Make("MountainCarContinuous-v0")
 	if err != nil {
 		t.Errorf("make: %v", err)
 	}
 
-	env, err = wrappers.NewClipAction(env)
+	env, err = wrappers.NewFlattenObservation(env)
 	if err != nil {
 		t.Error(err)
 	}
@@ -36,6 +36,15 @@ func TestNewClipAction(t *testing.T) {
 	_, _, _, err = env.Step(mat.NewVecDense(1, []float64{0.0}))
 	if err != nil {
 		t.Errorf("step: %v", err)
+	}
+
+	// Test the action scaling function
+	_, err = env.(*wrappers.FlattenObservation).Observation([]float64{
+		0.1,
+		0.1,
+	})
+	if err != nil {
+		t.Errorf("observation: %v", err)
 	}
 
 	env.Close()
