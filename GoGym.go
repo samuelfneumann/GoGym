@@ -305,6 +305,23 @@ func (g *GymEnv) Seed(seed int) ([]int, error) {
 // Python's OpenAI Gym.
 func (g *GymEnv) Step(a *mat.VecDense) (*mat.VecDense, float64, bool,
 	error) {
+	// Ensure the observation space is a box space. For now, we cannot return
+	// state observations of environments with DictSpace, DiscreteSpace, or
+	// TupleSpace observation spaces.
+	obsSpace, ok := g.ObservationSpace().(*BoxSpace)
+	if !ok {
+		return nil, 0, false, fmt.Errorf("step: can only step in environment "+
+			"with Box observation space, got %T", obsSpace)
+	}
+
+	// Ensure the action space is a box space or a discrete space
+	_, boxOk := g.ActionSpace().(*BoxSpace)
+	_, discreteOk := g.ActionSpace().(*DiscreteSpace)
+	if !boxOk && !discreteOk {
+		return nil, 0, false, fmt.Errorf("step: can only step in environment "+
+			"with Box or Discrete action spaces, got %T", g.ActionSpace())
+	}
+
 	// Get the step function
 	stepFunc := g.env.GetAttrString("step")
 	defer stepFunc.DecRef()
