@@ -75,3 +75,6 @@ for i := 0; i < 10; i++ {
 - [ ] Make all environments work, even those that do not implement the *regular* environment API
 - [ ] Add all wrappers
 - [ ] Add all spaces
+
+# ToDo
+- [ ] Depending on the observation space type, Step() should construct the appropriate observation (vector, dict, tuple) and return a structure of that type. E.g. if the environment is wrapped by a PixelObservation wrapper, then the returned observation is actually a Python dict[string]np.array, so we should also do this. Step() will return an interface{}. Then, for a composite type: for each index we construct an associated value (e.g. if observation["pixels"] is a np.array, we return a []float64 at that index) etc. 

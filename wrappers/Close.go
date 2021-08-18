@@ -15,6 +15,7 @@ func Close() {
 		clipActionModule.DecRef()
 		flattenObservationModule.DecRef()
 		rescaleActionModule.DecRef()
+		filterObservationModule.DecRef()
 	}
 	Closed = true
 

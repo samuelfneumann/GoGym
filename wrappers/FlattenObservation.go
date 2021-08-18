@@ -32,7 +32,10 @@ func init() {
 }
 
 // FlattenObservation wraps a gogym.Environment and flattens the
-// observations
+// observations.
+//
+// The observation space of a FlattenObservation wrapper should always
+// be a BoxSpace.
 //
 // https://github.com/openai/gym/blob/master/gym/wrappers/flatten_
 // observation.py
@@ -65,16 +68,17 @@ func NewFlattenObservation(env gogym.Environment) (gogym.Environment, error) {
 	defer pyObservationSpace.DecRef()
 	obsSpace, err := gogym.SpaceFromPyObject(pyObservationSpace)
 	if err != nil {
-		return nil, fmt.Errorf("could not get Python action space: %v", err)
+		return nil, fmt.Errorf("could not get Python observation space: %v",
+			err)
 	}
 
 	// Create the new gogym Environment
 	newGymEnv := gogym.New(
 		newEnv,
-		fmt.Sprintf("ClipAction(%v)", env.Name()),
+		fmt.Sprintf("FlattenObservation(%v)", env.Name()),
 		env.ContinuousAction(),
 		env.ActionSpace(),
-		obsSpace,
+		obsSpace.(*gogym.BoxSpace),
 	)
 
 	return &FlattenObservation{

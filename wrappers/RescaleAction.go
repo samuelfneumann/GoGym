@@ -77,7 +77,7 @@ func NewRescaleAction(env gogym.Environment, a, b float64) (gogym.Environment,
 	// Create the new gogym Environment
 	newGymEnv := gogym.New(
 		newEnv,
-		fmt.Sprintf("ClipAction(%v)", env.Name()),
+		fmt.Sprintf("RescaleAction(%v)", env.Name()),
 		env.ContinuousAction(),
 		actionSpace,
 		env.ObservationSpace(),
