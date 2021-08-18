@@ -13,7 +13,8 @@ var rescaleActionModule *python.PyObject
 // init performs setup before running
 func init() {
 	// Create the gym.wrappers.rescale_action Python module
-	wrappersModule := python.PyImport_ImportModule("gym.wrappers.rescale_action")
+	wrappersModule := python.PyImport_ImportModule("gym.wrappers." +
+		"rescale_action")
 	defer wrappersModule.DecRef()
 	if wrappersModule == nil {
 		if python.PyErr_Occurred() != nil {
@@ -25,7 +26,8 @@ func init() {
 		}
 		panic("init: could not import gym.wrappers.rescale_action")
 	}
-	rescaleActionModule = python.PyImport_AddModule("gym.wrappers.rescale_action")
+	rescaleActionModule = python.PyImport_AddModule("gym.wrappers." +
+		"rescale_action")
 	wrappersModule.IncRef()
 }
 
@@ -37,9 +39,8 @@ func init() {
 // action.py
 type RescaleAction struct {
 	gogym.Environment
-	wrapped     gogym.Environment
-	a, b        float64
-	actionSpace gogym.Space
+	wrapped gogym.Environment
+	a, b    float64
 }
 
 // NewRescaleAction returns a new gogym.Environment that rescales the
@@ -60,7 +61,7 @@ func NewRescaleAction(env gogym.Environment, a, b float64) (gogym.Environment,
 			fmt.Println("==================================")
 			fmt.Println()
 		}
-		return nil, fmt.Errorf("rescaleAction: could not wrap environment")
+		return nil, fmt.Errorf("newRescaleAction: could not wrap environment")
 	}
 
 	// Create the new action space
@@ -78,7 +79,7 @@ func NewRescaleAction(env gogym.Environment, a, b float64) (gogym.Environment,
 		newEnv,
 		fmt.Sprintf("ClipAction(%v)", env.Name()),
 		env.ContinuousAction(),
-		env.ActionSpace(),
+		actionSpace,
 		env.ObservationSpace(),
 	)
 
@@ -87,13 +88,7 @@ func NewRescaleAction(env gogym.Environment, a, b float64) (gogym.Environment,
 		wrapped:     env,
 		a:           a,
 		b:           b,
-		actionSpace: actionSpace,
 	}, nil
-}
-
-// ActionSpace returns the action space as a Go data structure
-func (r *RescaleAction) ActionSpace() gogym.Space {
-	return r.actionSpace
 }
 
 // Action rescales the argument action to the legal bounds in the

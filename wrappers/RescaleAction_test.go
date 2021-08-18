@@ -18,7 +18,7 @@ func TestNewRescaleAction(t *testing.T) {
 
 	env, err = wrappers.NewRescaleAction(env, -0.5, 0.5)
 	if err != nil {
-		t.Errorf("newClipAction: %v", err)
+		t.Error(err)
 	}
 
 	// Reset the environment
