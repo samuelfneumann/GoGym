@@ -137,3 +137,13 @@ func (d *DictSpace) High() []*mat.VecDense {
 func (d *DictSpace) Len() int {
 	return len(d.keys)
 }
+
+// At returns the space at key in the DictSpace
+func (d *DictSpace) At(key string) (Space, error) {
+	for i, dictKey := range d.keys {
+		if key == dictKey {
+			return d.values[i], nil
+		}
+	}
+	return nil, fmt.Errorf("at: key %v not in DictSpace", key)
+}

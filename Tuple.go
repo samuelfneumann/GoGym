@@ -120,3 +120,8 @@ func (t *TupleSpace) Sample() []*mat.VecDense {
 func (t *TupleSpace) Len() int {
 	return len(t.spaces)
 }
+
+// At returns the Space in the TupleSpace at index i
+func (t *TupleSpace) At(i int) Space {
+	return t.spaces[i]
+}
