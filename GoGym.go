@@ -11,6 +11,7 @@ import "C"
 import (
 	"fmt"
 	"os"
+	"reflect"
 
 	python "github.com/DataDog/go-python3"
 	"gonum.org/v1/gonum/mat"
@@ -569,4 +570,124 @@ func F64ToList(slice []float64) (*python.PyObject, error) {
 // in Python.
 func Print(obj *python.PyObject) {
 	fmt.Println(python.PyUnicode_AsUTF8(obj.Str()))
+}
+
+// SpaceFromPyObject converts a Python object to a Space. The type
+// of the Python object must be a legal equivalent of one of the Go
+// spaces defined in this module.
+//
+// If an error occurs, the state of the returned space is not defined.
+func SpaceFromPyObject(obj *python.PyObject) (Space, error) {
+	var space Space
+	var err error
+	switch obj.Type() {
+	case boxSpace:
+		space, err = NewBoxSpace(obj)
+
+	case discreteSpace:
+		space, err = NewDiscreteSpace(obj)
+
+	case dictSpace:
+		space, err = NewDictSpace(obj)
+
+	case tupleSpace:
+		space, err = NewTupleSpace(obj)
+
+	default:
+		return nil, fmt.Errorf("spaceFromPyObject: no such space %v",
+			obj.Type())
+	}
+
+	return space, err
+}
+
+// Flatten accepts a space and a point from that space and returns a 1D
+// array representation of the flattened point. For each space, x
+// has the following legal concrete types:
+//
+//		Space			Type
+//		BoxSpace		*mat.VecDense, []float64
+//		DiscreteSpace	int, uint, int64, uint64, int8, uint8, int32,
+//						uint32, int16, uint16, float32, float64
+//		TupleSpace		[]interface{}
+//		DictSpace		map[string]interface{}
+func Flatten(space Space, x interface{}) ([]float64, error) {
+	_, ok := space.(*BoxSpace)
+	if ok {
+		vec, ok := x.(*mat.VecDense)
+		if ok {
+			return vec.RawVector().Data, nil
+		}
+		return x.([]float64), nil
+	}
+
+	discreteSpace, ok := space.(*DiscreteSpace)
+	if ok {
+		onehot := make([]float64, discreteSpace.n)
+		switch t := x.(type) {
+		case int, uint, int64, uint64, int8, uint8, int32, uint32,
+			int16, uint16:
+			position := reflect.ValueOf(x)
+			onehot[position.Int()] = 1.0
+
+		case float64, float32:
+			position := reflect.ValueOf(x)
+			onehot[int(position.Float())] = 1.0
+
+		case *mat.VecDense:
+			position := x.(*mat.VecDense)
+			if position.Len() != 1 {
+				panic("flatten: discrete cannot be multi-dimensional")
+			}
+			onehot[int(position.AtVec(0))] = 1.0
+
+		default:
+			return nil, fmt.Errorf("flatten: type %v is not a point in a "+
+				"DiscreteSpace", t)
+		}
+		return onehot, nil
+	}
+
+	tupleSpace, ok := space.(*TupleSpace)
+	if ok {
+		var data []float64
+		tuple := x.([]interface{})
+		if len(tuple) != tupleSpace.Len() {
+			return nil, fmt.Errorf("flatten: input should have same length "+
+				"as TupleSpace \n\twant(%v) \n\thave(%v)", tupleSpace.Len(),
+				len(tuple))
+		}
+
+		for i := 0; i < tupleSpace.Len(); i++ {
+			flattenedData, err := Flatten(tupleSpace.At(i), tuple[i])
+			if err != nil {
+				return nil, fmt.Errorf("flatten: could not flatten tuple "+
+					"element at index %v: %v", i, err)
+			}
+			data = append(data, flattenedData...)
+		}
+		return data, nil
+	}
+
+	dictSpace, ok := space.(*DictSpace)
+	if ok {
+		var data []float64
+		dict := x.(map[string]interface{})
+		for key := range dict {
+			space, err := dictSpace.At(key)
+			if err != nil {
+				return nil, fmt.Errorf("flatten: %v", err)
+			}
+			flattenedValue, err := Flatten(space, dict[key])
+			if err != nil {
+				return nil, fmt.Errorf("flatten: could not flatten value %v "+
+					"at key %v", dict[key], key)
+			}
+			data = append(data, flattenedValue...)
+		}
+		return data, nil
+	}
+
+	return nil, fmt.Errorf("flatten: space type %T not yet implemented",
+		space)
 }
