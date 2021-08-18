@@ -89,8 +89,8 @@ func NewFilterObservation(env gogym.Environment,
 	defer pyObservationSpace.DecRef()
 	obsSpace, err := gogym.SpaceFromPyObject(pyObservationSpace)
 	if err != nil {
-		return nil, fmt.Errorf("could not get Python observation space: %v",
-			err)
+		return nil, fmt.Errorf("newFilterObservation: could not get Python "+
+			"observation space: %v", err)
 	}
 
 	// Create the new gogym Environment

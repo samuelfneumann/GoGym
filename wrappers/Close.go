@@ -2,7 +2,9 @@
 // in OpenAI's Gym.
 package wrappers
 
-import "github.com/samuelfneumann/gogym"
+import (
+	"github.com/samuelfneumann/gogym"
+)
 
 // Closed indicates whether the package has been closed or not
 var Closed bool = false

@@ -68,7 +68,8 @@ func NewFlattenObservation(env gogym.Environment) (gogym.Environment, error) {
 	defer pyObservationSpace.DecRef()
 	obsSpace, err := gogym.SpaceFromPyObject(pyObservationSpace)
 	if err != nil {
-		return nil, fmt.Errorf("could not get Python observation space: %v",
+		return nil, fmt.Errorf("newFlattenObservation: could not get Python "+
+			"observation space: %v",
 			err)
 	}
 

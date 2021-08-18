@@ -151,3 +151,59 @@ func (b *BoxSpace) BoundedAbove() []bool {
 func (b *BoxSpace) BoundedBelow() []bool {
 	return b.boundedBelow
 }
+
+// StackBefore stacks a BoxSpace to be the same shape as an argument
+// Python space. The argument space should be a stacked version of
+// the receiving BoxSpace's Python space, which is usually achieved
+// through some wrapper function. The newly added dimension will be
+// the first dimension.
+func (b *BoxSpace) StackBefore(space *python.PyObject) (*BoxSpace, error) {
+	if space.Type() != boxSpace {
+		return nil, fmt.Errorf("stackBefore: space must be a BoxSpace")
+	}
+
+	pyShape := space.GetAttrString("shape")
+	defer pyShape.DecRef()
+	shape, err := IntSliceFromIter(pyShape)
+	if err != nil {
+		return nil, fmt.Errorf("stackBefore: could not get space shape")
+	}
+
+	// Ensure the last N-1 dimensions match
+	totalComponents := 1
+	for i := 1; i < len(shape); i++ {
+		totalComponents *= shape[i]
+	}
+	if totalComponents != b.low.Len() {
+		panic("stackBefore: the argument space is not a stacked version of " +
+			"the receiving space")
+	}
+
+	newHigh := make([]float64, 0, totalComponents*shape[0])
+	newLow := make([]float64, 0, totalComponents*shape[0])
+	for i := 0; i < shape[0]; i++ {
+		newHigh = append(newHigh, b.high.RawVector().Data...)
+		newLow = append(newLow, b.low.RawVector().Data...)
+	}
+
+	// Random number generator for sampling from the space
+	src := rand.NewSource(uint64(time.Now().UnixNano()))
+	bounds := make([]r1.Interval, len(newLow))
+	for i := range bounds {
+		bounds[i] = r1.Interval{Min: newLow[i], Max: newHigh[i]}
+	}
+	rng := distmv.NewUniform(bounds, src)
+
+	newBox := BoxSpace{
+		PyObject:     space,
+		low:          mat.NewVecDense(len(newLow), newLow),
+		high:         mat.NewVecDense(len(newHigh), newHigh),
+		shape:        shape,
+		rng:          rng,
+		Source:       src,
+		boundedBelow: b.boundedBelow,
+		boundedAbove: b.boundedAbove,
+	}
+
+	return &newBox, nil
+}

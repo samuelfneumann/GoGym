@@ -493,8 +493,8 @@ func F64SliceFromIter(obj *python.PyObject) ([]float64, error) {
 	defer seq.DecRef()
 	next := seq.GetAttrString("__next__")
 	defer next.DecRef()
-
 	data := make([]float64, obj.Length())
+
 	for i := 0; i < obj.Length(); i++ {
 		item := next.CallObject(nil)
 		if item == nil {

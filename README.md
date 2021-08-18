@@ -8,6 +8,8 @@ This module simply provides `Go` bindings for OpenAI Gym. The module uses an emb
 
 If all you need is to be able to call the `Python` functions/methods `gym.make()`, `env.step()`, `env.reset()`, and `env.seed()`, then you can consider this module exactly what you need. If you need some of the fancier Open AI Gym tools, like all their wrappers, stay tuned! Those are soon to come!
 
+Currently, any wrappers that deal with multi-dimensional arrays are not supported. This includes `PixelObservationWrapper`s and `FrameStack` wrappers.
+
 # Installation and Dependencies
 This package has the following dependencies:
 * [OpenAI Gym](https://github.com/openai/gym)
@@ -77,4 +79,4 @@ for i := 0; i < 10; i++ {
 - [ ] Add all spaces
 
 # ToDo
-- [ ] Depending on the observation space type, Step() should construct the appropriate observation (vector, dict, tuple) and return a structure of that type. E.g. if the environment is wrapped by a PixelObservation wrapper, then the returned observation is actually a Python dict[string]np.array, so we should also do this. Step() will return an interface{}. Then, for a composite type: for each index we construct an associated value (e.g. if observation["pixels"] is a np.array, we return a []float64 at that index) etc. 
+- [ ] Depending on the observation space type, Step() should construct the appropriate observation (vector, dict, tuple) and return a structure of that type. E.g. if the environment is wrapped by a PixelObservation wrapper, then the returned observation is actually a Python dict[string]np.array, so we should also do this. Step() will return an interface{}. Then, for a composite type: for each index we construct an associated value (e.g. if observation["pixels"] is a np.array, we return a []float64 at that index) etc.
