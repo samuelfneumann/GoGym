@@ -6,7 +6,10 @@
 package gogym
 
 // #cgo pkg-config: python-3.7
-// #include <Python.h>
+// #include "Python.h"
+// // Numpy headers
+// #define NPY_NO_DEPRECATED_API NPY_1_7_API_VERSION
+// #include "/home/samuel/.local/lib/python3.7/site-packages/numpy/core/include/numpy/arrayobject.h"
 import "C"
 import (
 	"fmt"

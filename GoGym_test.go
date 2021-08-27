@@ -17,6 +17,7 @@ func TestMake(t *testing.T) {
 		"CartPole-v1",
 		"HalfCheetah-v2",
 		"Ant-v2",
+		// "Pong-v0",
 	}
 
 	for _, test := range tests {

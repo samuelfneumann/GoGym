@@ -4,11 +4,11 @@ This `Go` module provides functionality to access [OpenAI Gym](https://github.co
 
 This module simply provides `Go` bindings for OpenAI Gym. The module uses an embedded `Python` interpreter in `Go` code, so the actual gym code running under-the-hood is still `Python`. Don't expect `Go`-level performance. If you wanted reinforcement learning environments implemented completely in `Go`, see my [GoLearn: Reinforcement Learning in Go](https://github.com/samuelfneumann/GoLearn) module.
 
-**Current State**: Classic control, MuJoCo, and Atari environments work as returned by `gym.make()` in `Python`. Only the `ClipAction` wrapper is implemented fully. Rendering of environments, either through the `Render()` method or through `PixelObservationWrapper`s does not work. Environments must either have `Box` or `Discrete` observation and action spaces. Other spaces have not been implemented. These environments will still work, you just won't be able to inspect their observation or action spaces with the `ObservationSpace()` and `ActionSpace()` methods respectively.
+**Current State**: Classic control and MuJoCo environments work as returned by `gym.make()` in `Python`. Rendering of environments, either through the `Render()` method or through `PixelObservationWrapper`s does not work. Environments must either have `Box` or `Discrete` observation and action spaces. Other spaces have not been implemented. These environments will still work, you just won't be able to inspect their observation or action spaces with the `ObservationSpace()` and `ActionSpace()` methods respectively.
 
 If all you need is to be able to call the `Python` functions/methods `gym.make()`, `env.step()`, `env.reset()`, and `env.seed()`, then you can consider this module exactly what you need. If you need some of the fancier Open AI Gym tools, like all their wrappers, stay tuned! Those are soon to come!
 
-Currently, any wrappers that deal with multi-dimensional arrays are not supported. This includes `PixelObservationWrapper`s and `FrameStack` wrappers.
+Currently, any wrappers that deal with multi-dimensional arrays are not supported. This includes `PixelObservationWrapper`s and `FrameStack` wrappers. Only single-dimensional state observations are supported.
 
 # Installation and Dependencies
 This package has the following dependencies:
@@ -80,3 +80,6 @@ for i := 0; i < 10; i++ {
 
 # ToDo
 - [ ] Depending on the observation space type, Step() should construct the appropriate observation (vector, dict, tuple) and return a structure of that type. E.g. if the environment is wrapped by a PixelObservation wrapper, then the returned observation is actually a Python dict[string]np.array, so we should also do this. Step() will return an interface{}. Then, for a composite type: for each index we construct an associated value (e.g. if observation["pixels"] is a np.array, we return a []float64 at that index) etc.
+- [ ] To use **any** environments with nD (n > 1) observation dimensions, we will need to use the numpy C api to iterate over the array and turn it into a []float. It will then be up to the agent to reshape that into the appropriate shape for its input.
+- [ ] Get rid of `go-python3` and just use the `Python C API` instead. This way, `GoGym` will work with newer versions of `Python` too, and it will just be nicer.
+- [ ] Implement functionality using the `NumPy C API` to create `BoxSpace`s that have n-dimensional shapes. This will also allow us to use wrappers that return observations with n-dimensional shapes. Basically, we'll just return the `[]float64` and the client will have to reshape it.
