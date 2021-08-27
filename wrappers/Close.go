@@ -18,6 +18,7 @@ func Close() {
 		flattenObservationModule.DecRef()
 		rescaleActionModule.DecRef()
 		filterObservationModule.DecRef()
+		timeLimitModule.DecRef()
 	}
 	Closed = true
 

@@ -43,6 +43,7 @@ type ClipAction struct {
 func NewClipAction(env gogym.Environment) (gogym.Environment, error) {
 	// Call the ClipAction constructor with the argument environment
 	newEnv := clipActionModule.CallMethodArgs("ClipAction", env.Env())
+	defer newEnv.DecRef()
 	if newEnv == nil {
 		if python.PyErr_Occurred() != nil {
 			fmt.Println()
@@ -55,9 +56,11 @@ func NewClipAction(env gogym.Environment) (gogym.Environment, error) {
 	}
 
 	// Create the new gogym Environment
+	low := env.ActionSpace().Low()
+	high := env.ActionSpace().High()
 	newGymEnv := gogym.New(
 		newEnv,
-		fmt.Sprintf("ClipAction(%v)", env.Name()),
+		fmt.Sprintf("ClipAction(action: [%v, %v])(%v)", low, high, env.Name()),
 		env.ContinuousAction(),
 		env.ActionSpace(),
 		env.ObservationSpace(),

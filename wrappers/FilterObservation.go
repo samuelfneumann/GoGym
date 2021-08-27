@@ -71,6 +71,7 @@ func NewFilterObservation(env gogym.Environment,
 	// Call the FilterObservation constructor with the argument environment
 	newEnv := filterObservationModule.CallMethodArgs("FilterObservation",
 		pythonArgs...)
+	defer newEnv.DecRef()
 	if newEnv == nil {
 		if python.PyErr_Occurred() != nil {
 			fmt.Println()

@@ -52,7 +52,7 @@ func NewRescaleAction(env gogym.Environment, a, b float64) (gogym.Environment,
 	high := python.PyFloat_FromDouble(b)
 	newEnv := rescaleActionModule.CallMethodArgs("RescaleAction", env.Env(),
 		low, high)
-
+	defer newEnv.DecRef()
 	if newEnv == nil {
 		if python.PyErr_Occurred() != nil {
 			fmt.Println()
@@ -77,7 +77,7 @@ func NewRescaleAction(env gogym.Environment, a, b float64) (gogym.Environment,
 	// Create the new gogym Environment
 	newGymEnv := gogym.New(
 		newEnv,
-		fmt.Sprintf("RescaleAction(%v)", env.Name()),
+		fmt.Sprintf("RescaleAction(action: [a, b])(%v)", env.Name()),
 		env.ContinuousAction(),
 		actionSpace,
 		env.ObservationSpace(),

@@ -59,6 +59,7 @@ func NewPixelObservation(env *gogym.GymEnv, pixelsOnly bool,
 		nil,
 		python.PyUnicode_FromString(pixelKeys),
 	)
+	defer newEnv.DecRef()
 	if newEnv == nil {
 		if python.PyErr_Occurred() != nil {
 			fmt.Println()

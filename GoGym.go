@@ -132,7 +132,8 @@ type GymEnv struct {
 	observationSpace Space
 }
 
-// New creates and returns a new *GymEnv
+// New creates and returns a new *GymEnv. The argument PyObject env
+// is IncRef'd.
 func New(env *python.PyObject, envName string, continuousAction bool,
 	actionSpace, observationSpace Space) Environment {
 	if Closed {
@@ -145,6 +146,7 @@ func New(env *python.PyObject, envName string, continuousAction bool,
 		actionSpace:      actionSpace,
 		observationSpace: observationSpace,
 	}
+	env.IncRef()
 
 	openEnvironments[gymEnv] = struct{}{}
 	return gymEnv

@@ -50,7 +50,7 @@ func NewFlattenObservation(env gogym.Environment) (gogym.Environment, error) {
 	// Call the FlattenObservation constructor with the argument environment
 	newEnv := flattenObservationModule.CallMethodArgs("FlattenObservation",
 		env.Env())
-
+	defer newEnv.DecRef()
 	if newEnv == nil {
 		if python.PyErr_Occurred() != nil {
 			fmt.Println()
