@@ -45,7 +45,7 @@ To install `Python 3.7` (along with the `Python3.7-dev` package) from source:
 
 
 # Example Usage
-```
+```go
 env, err := Make("Ant-v2")
 if err != nil {
 	panic(err)
